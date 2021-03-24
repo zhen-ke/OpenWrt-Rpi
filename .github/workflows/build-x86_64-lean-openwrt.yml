@@ -13,7 +13,7 @@ on:
     types: [lean, x86_64]
   workflow_dispatch:
   # schedule:
-  #  - cron: 0 18 * * *
+  #   - cron: 0 18 * * *
   watch:
     types: started
 
@@ -55,12 +55,10 @@ jobs:
           sudo -E apt-get -qq autoremove --purge
           sudo -E apt-get -qq clean
           sudo ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
-
       - name: Clone Source Code
         run: |
           df -hT $PWD
           git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
-
       - name: Update Feeds
         id: update
         run: |
@@ -68,12 +66,10 @@ jobs:
           echo "OPENWRTROOT=$PWD" >> $GITHUB_ENV
           echo "::set-output name=OPENWRTROOT::$(echo $PWD)"
           ./scripts/feeds update -a
-
       - name: Install Feeds
         run: |
           cd $OPENWRTROOT
           ./scripts/feeds install -a
-
       - name: Load Custom Configuration
         run: |
           [ -e files ] && mv files $OPENWRTROOT/files
@@ -84,7 +80,6 @@ jobs:
           ../$DIY_SH
           ../scripts/preset-clash-core.sh amd64
           ../scripts/preset-terminal-tools.sh
-
       - name: Download Package
         id: package
         run: |
@@ -97,7 +92,6 @@ jobs:
           make download -j8
           find dl -size -1024c -exec ls -l {} \;
           find dl -size -1024c -exec rm -f {} \;
-
       - name: Compile Packages
         id: compile
         run: |
@@ -124,7 +118,6 @@ jobs:
           echo "FIRMWARE=$PWD" >> $GITHUB_ENV
           echo "::set-output name=FIRMWARE::$(echo $PWD)"
           echo "::set-output name=COMPILE_STATUS::success"
-
       - name: Generate Firmware
         if: steps.compile.outputs.COMPILE_STATUS == 'success'
         id: generate
@@ -161,12 +154,10 @@ jobs:
           make target/install -j$(nproc) || make target/install -j1 V=s
           make checksum
           echo "::set-output name=GENERATE_STATUS::success"
-
       - name: Compress Img Files
         run: |
           cd $OPENWRTROOT/bin/targets/$TARGET/$SUBTARGET
           gzip *.img
-
       - name: Upload Bin Folder
         uses: actions/upload-artifact@main
         if: steps.generate.outputs.GENERATE_STATUS == 'success'
@@ -190,7 +181,6 @@ jobs:
           echo "SUBTARGET=$(echo '${{needs.Build.outputs.SUBTARGET}}')" >> $GITHUB_ENV
           echo "FIRMWARE=$(echo '${{needs.Build.outputs.FIRMWARE}}')" >> $GITHUB_ENV
           echo "GENERATE_STATUS=$(echo '${{needs.Build.outputs.GENERATE_STATUS}}')" >> $GITHUB_ENV
-
       - name: Download Bin Folder
         uses: actions/download-artifact@v2
         if: env.GENERATE_STATUS == 'success'
@@ -208,7 +198,40 @@ jobs:
           mv server packages-server
           zip -qrm packages-server.zip packages-server
           mv packages-server.zip $OPENWRTROOT/bin/targets/$TARGET/$SUBTARGET
-
+      - name: Rclone Upload
+        env:
+          RCLONE_PACKAGE: ${{ secrets.RCLONE_PACKAGE }}
+          RCLONE_FIRMWARE: ${{ secrets.RCLONE_FIRMWARE }}
+        if: env.GENERATE_STATUS == 'success' && env.UPLOAD_RCLONE == 'true' && env.RCLONE_PACKAGE != ''
+        run: |
+          cd $OPENWRTROOT
+          curl https://rclone.org/install.sh | sudo bash
+          mkdir -p ~/.config/rclone/
+          cat << EOF > ~/.config/rclone/rclone.conf
+          ${{ secrets.RCLONE_CONFIG }}
+          EOF
+          rclone copy bin $RCLONE_PACKAGE:$(date +"%Y-%m-%d")/lean --filter-from ../data/rclone/upload-rule.txt
+          rclone copy bin/targets $RCLONE_FIRMWARE:$(date +"%Y-%m-%d")/lean --exclude "packages/"
+          echo "::warning file=Firmware-GoogleDrive::Download Link: https://drive.google.com/drive/folders/1_P2RoPbguY99qJxmCU4SKUgP8Kg0Xr03"
+      - name: Deploy Files To Server
+        env:
+          HOST: "${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}"
+          SOURCE_TARGETS: "openwrt/bin/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}/"
+          DEST_TARGETS: "${{ env.WEBROOT }}/releases/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}/"
+          REMOTE_PRIVATEKEY: "${{secrets.REMOTE_PRIVATEKEY}}"
+        if: env.GENERATE_STATUS == 'success' && env.REMOTE_PRIVATEKEY != null
+        run: |
+          mkdir -p ~/.ssh/
+          install -m 600 /dev/null ~/.ssh/id_rsa
+          echo "${{secrets.REMOTE_PRIVATEKEY}}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh -q -t -i ~/.ssh/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $HOST \
+          bash -c "'mkdir -p $WEBROOT/releases/targets/$TARGET/$SUBTARGET'"
+          rsync -chav --delete -e 'ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no' $SOURCE_TARGETS $HOST:$DEST_TARGETS
+          ssh -q -t -i ~/.ssh/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $HOST \
+          bash -c "'mkdir -p $WEBROOT/archive/$(date +%Y)/$(date +%m)/$(date +%d)/releases/targets/$TARGET && \
+          cp -rf $WEBROOT/releases/targets/$TARGET/$SUBTARGET $WEBROOT/archive/$(date +%Y)/$(date +%m)/$(date +%d)/releases/targets/$TARGET'"
+          echo "::warning file=Firmware-OpenWrt.cc::Download Link: https://openwrt.cc/releases/targets/$TARGET/$SUBTARGET"
       - name: Organize Files
         id: organize
         if: env.GENERATE_STATUS == 'success' && !cancelled()
@@ -226,14 +249,24 @@ jobs:
           sudo chmod +x /usr/bin/transfer
           df -hT $PWD
           echo "::set-output name=ORGANIZE_STATUS::success"
-
-      - name: Upload firmware directory
-        uses: actions/upload-artifact@master
-        if: steps.organize.outputs.status == 'success' && !cancelled()
-        with:
-          name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-          path: ${{ env.FIRMWARE }}
-
+      - name: Upload Uefi Firmwares To WeTransfer
+        if: steps.organize.outputs.ORGANIZE_STATUS == 'success' && env.UPLOAD_WETRANSFER == 'true'
+        run: |
+          cd $FIRMWARE
+          transfer wet -s -p 16 --no-progress $OPENWRTROOT/output/uefi-images 2>&1 | tee wetransfer-uefi.log
+          echo "::warning file=Wetransfer-UEFI=::$(cat wetransfer-uefi.log | grep https)"
+      - name: Upload Legacy Firmwares To WeTransfer
+        if: steps.organize.outputs.ORGANIZE_STATUS == 'success' && env.UPLOAD_WETRANSFER == 'true'
+        run: |
+          cd $FIRMWARE
+          transfer wet -s -p 16 --no-progress $OPENWRTROOT/output/legacy-images 2>&1 | tee wetransfer-legacy.log
+          echo "::warning file=Wetransfer-Legacy::$(cat wetransfer-legacy.log | grep https)"
+      - name: Upload Other Files To WeTransfer
+        if: steps.organize.outputs.ORGANIZE_STATUS == 'success' && env.UPLOAD_WETRANSFER == 'true'
+        run: |
+          cd $FIRMWARE
+          transfer wet -s -p 16 --no-progress $OPENWRTROOT/output/other-files 2>&1 | tee wetransfer-other.log
+          echo "::warning file=Wetransfer-OtherFiles::$(cat wetransfer-other.log | grep https)"
       - name: Delete Artifacts
         uses: geekyeggo/delete-artifact@v1
         with:
