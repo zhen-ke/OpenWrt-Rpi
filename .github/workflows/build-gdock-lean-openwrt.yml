@@ -9,13 +9,13 @@
 name: Build G-Dock Lean's OpenWrt
 
 on:
-  repository_dispatch:
-    types: [lean, gdock]
-  workflow_dispatch:
-  schedule:
-    - cron: 0 18 * * *
-#  watch:
-#    types: started
+  # repository_dispatch:
+  #   types: [lean, gdock]
+  # workflow_dispatch:
+  # schedule:
+  #   - cron: 0 18 * * *
+  # watch:
+  #   types: started
 
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
