@@ -7,7 +7,7 @@
 #=================================================
 
 # Set default theme to luci-theme-argon
-uci set luci.main.mediaurlbase='/luci-static/argon'
+uci set luci.main.mediaurlbase='/luci-static/bootstrap'
 
 # Disable autostart by default for some packages
 cd /etc/rc.d
