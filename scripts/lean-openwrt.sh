@@ -57,6 +57,10 @@ rm -rf ../lean/luci-app-docker
 git clone --depth=1 https://github.com/KFERMercer/luci-app-dockerman
 git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 
+# 删除无用 app
+rm -rf ../lean/luci-app-familycloud
+rm -rf ../lean/luci-app-jd-dailybonus
+
 # Add luci-app-gowebdav
 svn co https://github.com/immortalwrt/luci/branches/openwrt-18.06/applications/luci-app-gowebdav
 svn co https://github.com/immortalwrt/packages/branches/openwrt-18.06/net/gowebdav

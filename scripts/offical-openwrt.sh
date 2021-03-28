@@ -16,7 +16,7 @@ popd
 # Copy Lean's packages to ./package/lean.
 mkdir package/lean
 pushd package/lede/package/lean
-cp -r {adbyby,automount,baidupcs-web,coremark,ddns-scripts_aliyun,ddns-scripts_dnspod,dns2socks,ipt2socks,ipv6-helper,kcptun,luci-app-adbyby-plus,luci-app-arpbind,luci-app-autoreboot,luci-app-baidupcs-web,luci-app-cifs-mount,luci-app-cpufreq,luci-app-familycloud,luci-app-filetransfer,luci-app-frpc,luci-app-n2n_v2,luci-app-nfs,luci-app-nft-qos,luci-app-nps,luci-app-ps3netsrv,luci-app-softethervpn,luci-app-usb-printer,luci-app-unblockmusic,luci-app-verysync,luci-app-vsftpd,luci-app-webadmin,luci-app-xlnetacc,luci-lib-fs,microsocks,n2n_v2,npc,pdnsd-alt,proxychains-ng,ps3netsrv,redsocks2,shadowsocksr-libev,simple-obfs,softethervpn5,srelay,tcpping,trojan,UnblockNeteaseMusic,UnblockNeteaseMusicGo,uugamebooster,v2ray,v2ray-plugin,verysync,vsftpd-alt,xray} "../../../lean"
+cp -r {adbyby,automount,coremark,ddns-scripts_aliyun,ddns-scripts_dnspod,dns2socks,ipt2socks,ipv6-helper,kcptun,luci-app-adbyby-plus,luci-app-arpbind,luci-app-autoreboot,luci-app-cifs-mount,luci-app-cpufreq,luci-app-filetransfer,luci-app-frpc,luci-app-n2n_v2,luci-app-nfs,luci-app-nft-qos,luci-app-nps,luci-app-ps3netsrv,luci-app-softethervpn,luci-app-usb-printer,luci-app-unblockmusic,luci-app-verysync,luci-app-vsftpd,luci-app-webadmin,luci-lib-fs,microsocks,n2n_v2,npc,pdnsd-alt,proxychains-ng,ps3netsrv,redsocks2,shadowsocksr-libev,simple-obfs,softethervpn5,srelay,tcpping,trojan,UnblockNeteaseMusic,UnblockNeteaseMusicGo,uugamebooster,v2ray,v2ray-plugin,verysync,vsftpd-alt,xray} "../../../lean"
 popd
 
 # Default settings
@@ -75,9 +75,6 @@ cp luci-app-diskman/Parted.Makefile parted/Makefile
 # Add luci-app-gowebdav
 # svn co https://github.com/immortalwrt/immortalwrt/trunk/package/ctcgfw/gowebdav
 # svn co https://github.com/immortalwrt/immortalwrt/trunk/package/ctcgfw/luci-app-gowebdav
-
-# Add luci-app-jd-dailybonus
-# git clone --depth=1 https://github.com/jerrykuku/luci-app-jd-dailybonus
 
 # Add luci-theme-argon
 git clone --depth=1 https://github.com/jerrykuku/luci-theme-argon
