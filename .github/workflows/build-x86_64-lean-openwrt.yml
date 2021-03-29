@@ -27,6 +27,7 @@ env:
   WEBROOT: /data/dnmp/www/openwrt.cc
   UPLOAD_RCLONE: false
   UPLOAD_WETRANSFER: false
+  UPLOAD_FIRMWARE: true
   TZ: Asia/Shanghai
 
 jobs:
@@ -164,29 +165,6 @@ jobs:
         with:
           name: bin-archive
           path: openwrt/bin
-      - name: Organize Files
-        id: organize
-        if: env.GENERATE_STATUS == 'success' && !cancelled()
-        run: |
-          cd ${FIRMWARE}
-          rm -rf packages
-          mkdir -p $OPENWRTROOT/output/uefi-images
-          mkdir -p $OPENWRTROOT/output/legacy-images
-          mkdir -p $OPENWRTROOT/output/other-files
-          mv *combined-efi* $OPENWRTROOT/output/uefi-images
-          mv *combined* $OPENWRTROOT/output/legacy-images
-          mv * $OPENWRTROOT/output/other-files
-          curl -sL https://git.io/file-transfer | bash -s beta
-          sudo mv transfer /usr/bin
-          sudo chmod +x /usr/bin/transfer
-          df -hT $PWD
-          echo "::set-output name=ORGANIZE_STATUS::success"
-      - name: Upload firmware directory
-        uses: actions/upload-artifact@main
-        if: env.GENERATE_STATUS == 'success' && !cancelled()
-        with:
-          name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-          path: ${{ env.FIRMWARE }}
 
   Upload:
     needs: [Build]
@@ -272,6 +250,12 @@ jobs:
           sudo chmod +x /usr/bin/transfer
           df -hT $PWD
           echo "::set-output name=ORGANIZE_STATUS::success"
+      - name: Upload firmware directory
+        uses: actions/upload-artifact@main
+        if: steps.organize.outputs.ORGANIZE_STATUS == 'success' && env.UPLOAD_FIRMWARE == 'true'
+        with:
+          name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+          path: ${{ env.FIRMWARE }}
       - name: Upload Uefi Firmwares To WeTransfer
         if: steps.organize.outputs.ORGANIZE_STATUS == 'success' && env.UPLOAD_WETRANSFER == 'true'
         run: |
