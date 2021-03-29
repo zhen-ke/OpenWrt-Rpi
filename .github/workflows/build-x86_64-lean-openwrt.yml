@@ -14,19 +14,19 @@ on:
   workflow_dispatch:
   # schedule:
   #   - cron: 0 18 * * *
-  watch:
-    types: started
+  # watch:
+  #   types: started
 
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
   REPO_BRANCH: master
   CONFIG_FILE: config/lean/x86/x86_64-lean-target.config
   DIY_SH: scripts/lean-openwrt.sh
-  IPV6MOD_IN_FIRMWARE: true
+  IPV6MOD_IN_FIRMWARE: false
   KMODS_IN_FIRMWARE: true
   WEBROOT: /data/dnmp/www/openwrt.cc
-  UPLOAD_RCLONE: true
-  UPLOAD_WETRANSFER: true
+  UPLOAD_RCLONE: false
+  UPLOAD_WETRANSFER: false
   TZ: Asia/Shanghai
 
 jobs:
@@ -164,6 +164,29 @@ jobs:
         with:
           name: bin-archive
           path: openwrt/bin
+      - name: Organize Files
+        id: organize
+        if: env.GENERATE_STATUS == 'success' && !cancelled()
+        run: |
+          cd ${FIRMWARE}
+          rm -rf packages
+          mkdir -p $OPENWRTROOT/output/uefi-images
+          mkdir -p $OPENWRTROOT/output/legacy-images
+          mkdir -p $OPENWRTROOT/output/other-files
+          mv *combined-efi* $OPENWRTROOT/output/uefi-images
+          mv *combined* $OPENWRTROOT/output/legacy-images
+          mv * $OPENWRTROOT/output/other-files
+          curl -sL https://git.io/file-transfer | bash -s beta
+          sudo mv transfer /usr/bin
+          sudo chmod +x /usr/bin/transfer
+          df -hT $PWD
+          echo "::set-output name=ORGANIZE_STATUS::success"
+      - name: Upload firmware directory
+        uses: actions/upload-artifact@main
+        if: if: env.GENERATE_STATUS == 'success' && !cancelled()
+        with:
+          name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+          path: ${{ env.FIRMWARE }}
 
   Upload:
     needs: [Build]
