@@ -18,7 +18,7 @@ on:
   #   types: started
 
 env:
-  REPO_URL: https://github.com/coolsnowwolf/lede
+  REPO_URL: https://github.com/ownhere/lede
   REPO_BRANCH: master
   CONFIG_FILE: config/lean/x86/x86_64-lean-target.config
   DIY_SH: scripts/lean-openwrt.sh
